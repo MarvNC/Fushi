@@ -135,7 +135,16 @@ extension _ReaderNavigation on _ReaderFushiPageState {
       // 初始 WebView HTML 是在 _hasEverLoaded 尚为 false 时求值的（漏底栏高），这里补下一次
       // chrome insets，让正文列底沿避开底栏（竖排尤为明显，见辅助方法长注释）。
       _reapplyChromeInsetsAfterFirstLoad();
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      // BUG-3065: Flutter 3.47 edgeToEdge clears Android's immersive flags.
+      // Keep the entrance mode after the first frame instead of revealing the
+      // system bars and feeding their new top inset back into the book.
+      // A popped route remains mounted during its reverse transition. A late
+      // restore must not hide the home shell's bars after closeMedia restored them.
+      if (!_popInProgress) {
+        unawaited(
+          setReaderContentReadySystemUiMode(isAndroid: Platform.isAndroid),
+        );
+      }
       // TODO-700 T3：内容就绪确定性落焦到正文（门控见 helper）。
       _focusOwnership.reclaim(FocusReclaimCause.contentReady);
       WidgetsBinding.instance.addPostFrameCallback((_) {
